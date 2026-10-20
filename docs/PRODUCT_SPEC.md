@@ -1,4 +1,8 @@
-> **Binding amendments:** read [REVIEW_AMENDMENTS.md](REVIEW_AMENDMENTS.md) first. It overrides any conflicting text below.
+> **Historical product brief (pre-implementation).** Kept for provenance. It is **not** the current source of truth for shipped behavior.
+>
+> **Current docs:** [README](../README.md), [ARCHITECTURE.md](ARCHITECTURE.md), [MODEL_CARD.md](MODEL_CARD.md), [METRICS.md](METRICS.md), [SECURITY.md](SECURITY.md), [ENGINEERING_DECISIONS.md](ENGINEERING_DECISIONS.md), [RELEASE_READINESS.md](RELEASE_READINESS.md).
+>
+> **Binding amendments:** [REVIEW_AMENDMENTS.md](REVIEW_AMENDMENTS.md) overrides any conflicting text below. Planned items in this brief (e.g. dedicated two-model comparison UI) may still be unshipped — check the README capabilities table.
 
 # CURSOR AGENT PROMPT — FAIRHIRE AUDIT
 
