@@ -9,8 +9,6 @@ import type { AuditPayload, DatasetSummary } from "../types";
 
 export function MapPage() {
   const { datasetId = "" } = useParams();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
   const dataset = useQuery({
     queryKey: ["dataset", datasetId],
     queryFn: () => api<DatasetSummary>(`/api/datasets/${datasetId}`),
@@ -103,14 +101,11 @@ function MapForm({
     );
   }
 
-  if (dataset.isLoading || preview.isLoading) return <Loading label="Loading the file" />;
-  if (dataset.isError || preview.isError) return <ErrorNote message="The dataset could not be loaded." />;
-
   return (
     <div>
       <PageIntro
         eyebrow="Column mapping"
-        title={dataset.data?.name ?? "Map columns"}
+        title={name}
         lede="Choose the outcome, the prediction, and the group columns you are permitted to audit. The tool does not infer a protected attribute."
       />
       {error ? <div className="mb-4"><ErrorNote message={error} /></div> : null}
@@ -127,7 +122,7 @@ function MapForm({
             </tr>
           </thead>
           <tbody>
-            {(preview.data?.rows ?? []).map((row, index) => (
+            {rows.map((row, index) => (
               <tr key={index}>
                 {columns.map((column) => (
                   <td key={column} className="border-b border-slate-100 px-2 py-2 tabular dark:border-white/5">
@@ -138,7 +133,7 @@ function MapForm({
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-slate-500">{preview.data?.row_count} rows in the file. Eight are shown.</p>
+        <p className="mt-2 text-xs text-slate-500">{rowCount} rows in the file. Eight are shown.</p>
       </Panel>
       <form
         className="mt-4 grid gap-4 lg:grid-cols-2"
