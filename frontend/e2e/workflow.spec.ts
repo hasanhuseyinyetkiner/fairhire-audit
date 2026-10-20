@@ -1,16 +1,31 @@
 import { expect, test } from "@playwright/test";
 
-test("import a synthetic audit and compare groups", async ({ page }) => {
+test("import a synthetic audit, compare groups, and export the report", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("generate-similar_accuracy_different_errors").click();
   await expect(page.getByRole("heading", { name: /Similar accuracy/ })).toBeVisible();
   await page.getByRole("button", { name: "Run audit" }).click();
   await expect(page.getByTestId("confusion-matrix")).toBeVisible();
-  await expect(page.getByText("TN").first()).toBeVisible();
+  await expect(page.getByTestId("cm-tn")).toContainText("91");
+  await expect(page.getByTestId("cm-tp")).toContainText("71");
   await page.getByRole("link", { name: "Group disparities" }).click();
   await expect(page.getByTestId("group-card-group_a")).toContainText("n = 100");
   await expect(page.getByTestId("group-card-group_b")).toContainText("0.0%");
   await expect(page.getByTestId("group-card-group_c")).toContainText("n = 4");
   await expect(page.getByTestId("group-card-group_c")).toContainText("not a zero");
   await expect(page.getByTestId("cannot-conclude")).toContainText("do not certify");
+  await page.getByRole("link", { name: "Audit report" }).click();
+  await expect(page.getByRole("heading", { name: /record of the evidence/i })).toBeVisible();
+  const html = page.getByRole("link", { name: "Download HTML" });
+  const json = page.getByRole("link", { name: "Download JSON" });
+  await expect(html).toBeVisible();
+  await expect(json).toBeVisible();
+  const htmlHref = await html.getAttribute("href");
+  expect(htmlHref).toMatch(/\/api\/audits\/.+\/report\.html$/);
+  const report = await page.request.get(htmlHref!);
+  expect(report.ok()).toBeTruthy();
+  const body = await report.text();
+  expect(body).toContain("What this cannot conclude");
+  expect(body).toContain("Not a certificate");
+  expect(body.toLowerCase()).not.toContain("bias-free");
 });

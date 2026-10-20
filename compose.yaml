@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fairhire
+      POSTGRES_PASSWORD: fairhire
+      POSTGRES_DB: fairhire
+    ports:
+      - "127.0.0.1:5404:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fairhire -d fairhire"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      FAIRHIRE_APP_ENV: demo
+      FAIRHIRE_BIND_HOST: "0.0.0.0"
+      FAIRHIRE_PORT: "8104"
+      FAIRHIRE_ALLOW_NETWORK_BIND: "true"
+      FAIRHIRE_DATABASE_URL: postgresql+psycopg://fairhire:fairhire@db:5432/fairhire
+      FAIRHIRE_UPLOAD_DIR: /srv/data/uploads
+      FAIRHIRE_REPORT_DIR: /srv/data/reports
+      FAIRHIRE_SEED_DEMO: "true"
+      FAIRHIRE_CORS_ORIGINS: http://127.0.0.1:5104,http://localhost:5104
+    ports:
+      - "127.0.0.1:8104:8104"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:5104:80"
+    depends_on:
+      - api

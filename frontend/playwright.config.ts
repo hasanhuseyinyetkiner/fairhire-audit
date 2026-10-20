@@ -16,7 +16,7 @@ export default defineConfig({
       command: "uv run python -m app",
       cwd: "..",
       url: "http://127.0.0.1:8104/ready",
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       env: {
         FAIRHIRE_APP_ENV: "demo",
@@ -31,7 +31,7 @@ export default defineConfig({
     {
       command: "pnpm exec vite --host 127.0.0.1 --port 5104 --strictPort",
       url: "http://127.0.0.1:5104",
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
   ],

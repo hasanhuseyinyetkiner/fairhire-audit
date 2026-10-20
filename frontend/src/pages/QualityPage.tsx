@@ -103,6 +103,7 @@ export function QualityPage() {
 function Cell({ name, value, accent = false }: { name: string; value: number; accent?: boolean }) {
   return (
     <div
+      data-testid={`cm-${name.toLowerCase()}`}
       className={`rounded-2xl border px-4 py-5 ${
         accent ? "border-[#2563EB] bg-blue-50 dark:bg-blue-950/30" : "border-slate-200 dark:border-white/10"
       }`}
