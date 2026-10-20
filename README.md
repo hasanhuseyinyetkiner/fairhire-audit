@@ -4,82 +4,182 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
-  <img alt="FairHire Audit — audit the model, show your evidence" src="docs/assets/banner-light.svg" width="100%">
+  <img alt="FairHire Audit — Audit the model. Understand the trade-offs. Show your evidence." src="docs/assets/banner-light.svg" width="100%">
 </picture>
+
+[![CI](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml)
 
 **Audit the model. Understand the trade-offs. Show your evidence.**
 
-Transparent audits for hiring ML models: confusion matrices, Fairlearn group metrics, sample-size flags, seeded bootstrap confidence intervals, and a Threshold Lab that opens only when score semantics are declared.
+FairHire Audit is a local web app for inspecting hiring-model *evaluation* tables: confusion matrices, Fairlearn group rates, sample-size flags, seeded bootstrap intervals, and a Threshold Lab that stays locked until score semantics are declared. It is an audit tool, not a hiring decision engine.
 
-[Quick start](#quick-start) · [How it works](#how-it-works) · [What this measures](#what-this-measures--vs--cannot-conclude) · [Verification](#verification) · [Limitations](#security-privacy-and-limitations)
+[Quick start](#quick-start) · [60-second demo](#60-second-demo) · [What this cannot conclude](#what-this-measures--vs--what-this-cannot-conclude) · [Verification](#verification)
+
+<br/>
+
+<img alt="Model quality view: confusion matrix TP 71, TN 91, FP 11, FN 31 on synthetic evaluation rows" src="docs/screenshots/model-quality-light.png" width="100%">
+
+<img alt="Group disparities view: Fairlearn rates with sample sizes, small-n suppression, and cannot-conclude panel" src="docs/screenshots/group-disparities-light.png" width="100%">
 
 </div>
 
+## Why it exists
+
+Hiring models often look fine on overall accuracy while group error rates diverge. Teams need a reproducible way to inspect those trade-offs on authorized or synthetic evaluation data—with denominators, uncertainty, and honest limits written into the report.
+
+**For:** ML / people-analytics engineers and reviewers who already have labeled evaluation rows (`y_true`, `y_pred` or `score`, and permitted group columns).
+
+**Not for:** automated candidate ranking, legal certification, or inferring missing protected attributes.
+
+## Capabilities
+
+| Capability | Status |
+| --- | --- |
+| CSV / Parquet upload (size-capped; Parquet via pinned `pyarrow`) | Shipped |
+| Column mapping + FHA-1 score gate (`probability` / `ranking_score`) | Shipped |
+| Overall quality: confusion matrix, accuracy, precision, recall, FPR, FNR | Shipped |
+| Fairlearn `MetricFrame` group rates + DP / EO / equalized-odds differences | Shipped |
+| Per-group **n**; small-cell suppression (default min *n* = 30) | Shipped |
+| Seeded bootstrap CIs (sampling unit, iterations, seed in provenance) | Shipped |
+| Threshold Lab (enabled only after declared score semantics) | Shipped |
+| Deterministic synthetic profiles (no names / PII) | Shipped |
+| HTML + JSON audit report with “cannot conclude” section | Shipped |
+| Cascade delete + retention purge (`python -m app.cli purge`) | Shipped |
+| Intersectional group explorer UI | Planned |
+| Side-by-side two-model comparison on matched rows | Planned |
+
+Accent used in UI and banners: `#2563EB`.
+
+## Metrics pipeline
+
+```mermaid
+flowchart TB
+  subgraph ingest [Ingest]
+    U[CSV / Parquet / synthetic]
+    M[Column mapping]
+    S{Score mapped?}
+    G[Declare probability or ranking_score]
+  end
+  subgraph quality [Model quality]
+    CM[Confusion matrix + rates]
+    BR[Brier + reliability table<br/>probabilities only]
+  end
+  subgraph groups [Group disparities]
+    MF[Fairlearn MetricFrame]
+    DIFF[DP / EO / EqOdds differences]
+    SUP[Small-n suppression]
+  end
+  subgraph uncertainty [Uncertainty]
+    BS[Seeded bootstrap CIs]
+  end
+  subgraph lab [Threshold Lab]
+    TH[Cutoff simulation]
+  end
+  subgraph out [Export]
+    R[HTML + JSON report]
+  end
+  U --> M --> S
+  S -->|no| CM
+  S -->|yes| G --> CM
+  G --> BR
+  M --> MF --> DIFF
+  MF --> SUP
+  MF --> BS
+  G --> TH
+  CM --> R
+  DIFF --> R
+  BS --> R
+  TH --> R
+  SUP --> R
+```
+
+Undefined rates return `null` with an explicit reason—they are never silently filled with zero.
+
 ## Quick start
 
-Native path (verified on Windows 11 with `uv` + pnpm). Docker Compose is for CI smoke only until the `compose-smoke` job is green on GitHub Actions.
+Native path (verified on Windows 11 with `uv` + pnpm). Copy `.env.example` only if you need overrides.
 
 ```powershell
-# Backend (API http://127.0.0.1:8104)
+# API → http://127.0.0.1:8104
 uv sync
 uv run python -m app
 
-# Frontend (http://127.0.0.1:5104) — new terminal
+# Web → http://127.0.0.1:5104  (second terminal)
 cd frontend
 pnpm install
 pnpm dev
 ```
 
-| Service | URL / port |
+| Service | URL |
 | --- | --- |
 | Web | http://127.0.0.1:5104 |
-| API docs | http://127.0.0.1:8104/docs |
-| Compose Postgres (CI / optional) | host `5404` |
+| OpenAPI | http://127.0.0.1:8104/docs |
+| Compose Postgres (CI / optional) | host port `5404` |
 
-Synthetic evaluation datasets seed on startup when `FAIRHIRE_APP_ENV=demo`. Flow: **Import → Map columns → Model Quality → Group Disparities → Threshold Lab → Audit Report**.
+Defaults from `.env.example`: `FAIRHIRE_APP_ENV=demo`, loopback bind, SQLite under `./data/fairhire.db`, bootstrap seed `20261020`. The API refuses a non-loopback bind unless `FAIRHIRE_ALLOW_NETWORK_BIND=true`.
 
-Copy `.env.example` to `.env` only if you need overrides. The API refuses a non-loopback bind unless `FAIRHIRE_ALLOW_NETWORK_BIND=true`.
+Docker Compose is for the CI `compose-smoke` job; use it locally only if Docker is available.
 
-## How it works
+## 60-second demo
 
-```mermaid
-flowchart LR
-  CSV[CSV / Parquet] --> M[Column mapping + score gate]
-  M --> Q[Overall quality]
-  M --> G[Fairlearn MetricFrame]
-  G --> B[Seeded bootstrap CIs]
-  M --> T[Threshold Lab]
-  Q --> R[HTML + JSON report]
-  G --> R
-  B --> R
-  T --> R
-```
+With the API and web running and `FAIRHIRE_SEED_DEMO=true` (default in demo):
 
-- **Score gate (FHA-1):** Threshold Lab enables only when a numeric score column is mapped and the user declares `probability` or `ranking_score`. Probabilities must lie in `[0, 1]`. For probabilities the API shows Brier score and a reliability table; it never self-labels a score “calibrated.”
-- **Deletion (FHA-2):** Deleting a dataset cascades to runs, metrics, intervals, scenarios, reports, and stored files. `python -m app.cli purge` honors `FAIRHIRE_DATA_RETENTION_DAYS`.
-- **Parquet (FHA-3):** Uploads require `pyarrow` (pinned in `pyproject.toml`).
+1. Open http://127.0.0.1:5104 → **Import**.
+2. Generate synthetic profile **Similar accuracy, different error rates** (`similar_accuracy_different_errors`).
+3. Map columns (prefilled for synthetic) → **Run audit**.
+4. **Model quality** — expect confusion matrix cells:
 
-## What this measures — vs — cannot conclude
+   | | Pred 0 | Pred 1 |
+   | --- | ---: | ---: |
+   | **True 0** | TN **91** | FP **11** |
+   | **True 1** | FN **31** | TP **71** |
+
+5. **Group disparities** — `group_a` / `group_b` each *n* = 100 (same accuracy 0.80, different FPR/FNR); `group_c` *n* = 4 is suppressed (not drawn as zero).
+6. **Audit report** → download HTML/JSON. The report includes **What this cannot conclude** and does not contain a “bias-free” certificate.
+
+Path covered by Playwright: `frontend/e2e/workflow.spec.ts`.
+
+## API (implemented)
+
+| Method | Path |
+| --- | --- |
+| `GET` | `/health`, `/ready`, `/api/meta` |
+| `GET` | `/api/synthetic-profiles` |
+| `GET` / `POST` | `/api/datasets`, `/api/datasets/synthetic` |
+| `GET` / `DELETE` | `/api/datasets/{id}` |
+| `GET` | `/api/datasets/{id}/preview`, `/quality` |
+| `POST` | `/api/datasets/{id}/mapping` |
+| `POST` / `GET` | `/api/audits`, `/api/audits/{id}`, `/groups` |
+| `POST` | `/api/audits/{id}/threshold-scenarios` |
+| `GET` | `/api/audits/{id}/report.html`, `/report.json` |
+
+`GET /api/meta` returns `"decision_engine": false`.
+
+## What this measures — vs — what this cannot conclude
 
 | Measures | Does **not** conclude |
 | --- | --- |
-| Confusion matrix, accuracy, precision, recall, FPR, FNR | Legal compliance or “bias-free” certification |
-| Demographic parity / equal opportunity / equalized odds differences (Fairlearn) | Causal reason for a disparity |
+| Confusion matrix and standard classification rates | Legal compliance or regulatory fitness |
+| Demographic parity / equal opportunity / equalized odds *differences* (Fairlearn) | A causal reason for any disparity |
 | Per-group rates with **n** beside every rate; small-cell suppression | That a missing protected attribute can be inferred |
-| Bootstrap CIs (sampling unit, iterations, seed) | That a CI proves fairness |
-| Threshold sensitivity when score semantics are declared | That a simulated cutoff should be deployed |
+| Bootstrap CIs (unit, iterations, seed documented) | That a confidence interval “proves” fairness |
+| Threshold sensitivity after score semantics are declared | That a simulated cutoff should be deployed |
+| Report provenance (versions, assumptions, risks) | A “bias-free”, “compliant”, or certified hiring system |
+
+> [!IMPORTANT]
+> Metrics describe the uploaded evaluation table under stated assumptions. They do not authorize employment decisions and must not replace human review.
 
 ## Verification
 
-Measured locally on 2026-10-20 (see [`docs/METRICS.md`](docs/METRICS.md), including anti-slop re-verification):
+Re-run locally on **2026-10-20** (`uv` + SQLite; see [`docs/METRICS.md`](docs/METRICS.md)):
 
-| Suite | Result |
+| Check | Result |
 | --- | --- |
 | `uv run ruff check app tests` | Pass |
-| `uv run pytest -q` | 17 passed, 1 skipped (Postgres marker) |
-| `pnpm lint` / `typecheck` / `test` / `build` | Pass (3 Vitest tests) |
-| Live API on `:8104` + seeded audit CM spot-check | Pass (TP hand-count 71 = API 71) |
-| Playwright import → groups → HTML export | Covered by `frontend/e2e/workflow.spec.ts` |
+| `uv run pytest -q` | **17 passed, 1 skipped** (`postgres` marker without `TEST_DATABASE_URL`) |
+| `pnpm lint` / `typecheck` / `test` / `build` | Pass (**3** Vitest tests) |
+| Playwright import → groups → HTML export | **1** passed (`e2e/workflow.spec.ts`) |
+| Live API CM spot-check (seeded synthetic) | Hand TP 40+30+1 = **71**; API TP/TN/FP/FN = 71/91/11/31 |
 
 ```powershell
 uv run ruff check app tests
@@ -89,14 +189,20 @@ pnpm lint; pnpm typecheck; pnpm test; pnpm build
 pnpm test:e2e
 ```
 
-CI (`.github/workflows/ci.yml`): backend Ruff + pytest against PostgreSQL; frontend ESLint + `tsc` + Vitest + build; `compose-smoke` (`docker compose up --build -d`, wait for `/ready`, `docker compose down -v`).
+CI (`.github/workflows/ci.yml`): backend Ruff + pytest against PostgreSQL; frontend ESLint + `tsc` + Vitest + build; `compose-smoke` (`docker compose up --build -d` → wait `/ready` → `docker compose down -v`).
 
-## Security, privacy and limitations
+Screenshots above were captured from a live stack on API `:8104` and web `:5104` via `cd frontend && pnpm screenshots` (also writes dark variants under `docs/screenshots/`).
 
-> [!IMPORTANT]
-> This is an **audit tool**, not a hiring decision engine. Public demo data is synthetic only. Metrics do not prove fairness, certify compliance, or authorize employment decisions. Do not log raw rows or sensitive attribute values. Uploaded evaluation data is deletable and subject to retention purge.
+## Security, privacy, limitations
 
-Repository metadata for GitHub settings: [`docs/GITHUB_METADATA.md`](docs/GITHUB_METADATA.md).
+- Public demo data is **synthetic only**. Do not publish uploaded evaluation files, SQLite DBs, or report exports.
+- Deleting a dataset cascades to runs, metrics, intervals, scenarios, reports, and stored files.
+- Loopback bind by default; retention purge honors `FAIRHIRE_DATA_RETENTION_DAYS`.
+- Do not log raw evaluation rows or sensitive attribute values.
+- Fairness criteria can conflict; selection effects, label bias, and base-rate differences are out of scope for causal claims.
+
+GitHub About / topics: [`docs/GITHUB_METADATA.md`](docs/GITHUB_METADATA.md).  
+Measured notes: [`docs/METRICS.md`](docs/METRICS.md).
 
 License: pending owner decision.
 
