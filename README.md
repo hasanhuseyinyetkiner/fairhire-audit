@@ -71,13 +71,14 @@ flowchart LR
 
 ## Verification
 
-Measured locally on 2026-10-20 (see [`docs/METRICS.md`](docs/METRICS.md)):
+Measured locally on 2026-10-20 (see [`docs/METRICS.md`](docs/METRICS.md), including anti-slop re-verification):
 
 | Suite | Result |
 | --- | --- |
 | `uv run ruff check app tests` | Pass |
 | `uv run pytest -q` | 17 passed, 1 skipped (Postgres marker) |
 | `pnpm lint` / `typecheck` / `test` / `build` | Pass (3 Vitest tests) |
+| Live API on `:8104` + seeded audit CM spot-check | Pass (TP hand-count 71 = API 71) |
 | Playwright import → groups → HTML export | Covered by `frontend/e2e/workflow.spec.ts` |
 
 ```powershell

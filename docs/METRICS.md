@@ -48,3 +48,16 @@ Covered locally: Fairlearn MetricFrame golden values, bootstrap CIs, FHA-1 score
 | C-2 Loopback bind | Enforced; Compose uses `127.0.0.1:` prefixes |
 | C-3 Threadpool bootstrap + reaper | Implemented + tested |
 | C-6 Ports 8104 / 5104 / 5404 | Wired in settings, Vite, compose, Playwright |
+
+## Anti-slop audit (2026-10-20, re-verified)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Stub / placeholder grep (`TODO`, `FIXME`, `NotImplemented`, fake zeros) | Pass | Only legitimate `pass` bodies: `DeclarativeBase` and a `ValueError` branch in label normalization |
+| Fairlearn `MetricFrame` used | Pass | `app/domain/fairness.py` builds `MetricFrame`; `compute.py` calls `metric_frame_rates` + `assert_matches_metric_frame` |
+| Undefined rates not silent zero | Pass | `_rate` returns `None` + `undefined_denominator`; Fairlearn non-finite → `fairlearn_undefined`; golden `test_undefined_denominator_is_not_zero` |
+| `uv run pytest -q` | 17 passed, 1 skipped | Re-run 2026-10-20 |
+| Frontend `pnpm lint` / `typecheck` / `test` / `build` | Pass | 3 Vitest; Vite build OK |
+| Live API `:8104` seeded dataset + audit | Pass | Seeded `similar_accuracy_different_errors` audit `77735187-…` and fresh audit both returned CM |
+| Confusion-matrix spot-check (TP cell) | Pass | Hand: TP = 40+30+1 = **71** from synthetic blocks; API seeded+fresh TP=71, TN=91, FP=11, FN=31 |
+| README honesty | Pass | Explicit “bias-free” under *cannot conclude*; report HTML has no `bias-free`; `decision_engine=false` |
