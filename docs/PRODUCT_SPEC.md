@@ -1,3 +1,5 @@
+> **Binding amendments:** read [REVIEW_AMENDMENTS.md](REVIEW_AMENDMENTS.md) first. It overrides any conflicting text below.
+
 # CURSOR AGENT PROMPT — FAIRHIRE AUDIT
 
 Act as a senior responsible-ML engineer, statistical methodologist, Python API engineer, and open-source maintainer. Build **FairHire Audit**, an evidence-based model performance and group-disparity auditing web application. Implement real code, tests, report exports and a polished public GitHub README. Read `.cursor/rules/*.mdc` if present. This is an **audit tool**, not a hiring decision engine.
