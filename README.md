@@ -1,17 +1,26 @@
-# FairHire Audit
+<a id="readme-top"></a>
 
-Audit the model. Understand the trade-offs. Show your evidence.
+<div align="center">
 
-Group metrics, Fairlearn MetricFrame, sample-size warnings, and an explicit “what this cannot conclude” stance. Synthetic evaluation data only — not a hiring decision engine.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+  <img alt="FairHire Audit — audit the model, show your evidence" src="docs/assets/banner-light.svg" width="100%">
+</picture>
 
-## Verified local run (Windows)
+**Transparent audits for hiring ML models.** Confusion matrices, group disparity metrics (Fairlearn), sample-size flags, confidence intervals and a Threshold Lab that never pretends a score is calibrated unless you declare it.
+
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Limitations](#security-privacy-and-limitations)
+
+</div>
+
+## Quick start
 
 ```powershell
-# Terminal 1 — API (127.0.0.1:8104)
+# Backend (API http://127.0.0.1:8104)
 uv sync
 uv run python -m app
 
-# Terminal 2 — Web (127.0.0.1:5104)
+# Frontend (http://127.0.0.1:5104) — new terminal
 cd frontend
 pnpm install
 pnpm dev
@@ -22,12 +31,30 @@ pnpm dev
 | Web | http://127.0.0.1:5104 |
 | API docs | http://127.0.0.1:8104/docs |
 
-Synthetic datasets seed on startup. Map columns → run audit → inspect Model Quality / Group Disparities.
+Synthetic evaluation datasets seed on startup. Flow: Import → Map columns → Model Quality → Group Disparities → Report.
+
+## How it works
+
+```mermaid
+flowchart LR
+  CSV[Evaluation CSV] --> M[Column mapping]
+  M --> Q[Overall quality]
+  M --> G[Group MetricFrame]
+  G --> R[HTML / JSON report]
+```
+
+## Testing
 
 ```powershell
 uv run pytest -q
+cd frontend; pnpm test; pnpm build
 ```
 
-## Status
+## Security, privacy and limitations
 
-Backend + frontend MVP runnable. License pending owner decision.
+> [!IMPORTANT]
+> This is an audit tool, not a hiring decision engine. Synthetic data only. Metrics do not prove fairness or certify compliance.
+
+License: pending owner decision.
+
+<p align="right"><a href="#readme-top">↑ back to top</a></p>
