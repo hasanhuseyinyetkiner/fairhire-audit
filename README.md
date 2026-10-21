@@ -38,7 +38,6 @@ Overall accuracy can look fine while group false-positive and false-negative rat
 | Threshold Lab (live slider) + HTML/JSON report | Shipped |
 | Intersection toggle (cell cap 200) | Shipped |
 | Cascade delete + retention purge | Shipped |
-| Cochran–Mantel–Haenszel across strata | Not implemented — see [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) |
 | Side-by-side two-model comparison UI | Planned (domain deltas exist) |
 
 ---
@@ -159,11 +158,6 @@ Details: [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/LIMITATIONS.md`](docs/LI
 | --- | --- |
 | [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) | Methodology: formulas, bootstrap, AIR, suppression |
 | [`docs/METRICS.md`](docs/METRICS.md) | Verified commands and fixture numbers |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Runtime topology and layers |
-| [`docs/ENGINEERING_DECISIONS.md`](docs/ENGINEERING_DECISIONS.md) | Design decisions |
-| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Gaps (including CMH) |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Threat boundary, cascade delete, purge |
-| [`docs/GITHUB_METADATA.md`](docs/GITHUB_METADATA.md) | About blurb, topics |
 | [`frontend/README.md`](frontend/README.md) | Web scripts and routes |
 
 License: [MIT](LICENSE).
