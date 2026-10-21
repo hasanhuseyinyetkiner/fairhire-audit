@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 import numpy as np
 
+from app.domain.air import build_selection_audit
 from app.domain.bootstrap import bootstrap_intervals, resolve_iterations
 from app.domain.definitions import (
     ASSUMPTIONS,
@@ -125,6 +126,27 @@ def _group_blocks(
             row.pop("_mask_value", None)
 
         disparities = _disparities(y_true, y_pred, labels, weight, included, excluded, column, points)
+        selection_rates = {
+            row["group_value"]: next(
+                (m["value"] for m in row["metrics"] if m["name"] == "selection_rate"),
+                None,
+            )
+            for row in group_rows
+            if not row["suppressed"]
+        }
+        selection_audit = build_selection_audit(
+            column=column,
+            included=included,
+            y_pred=y_pred,
+            labels=labels,
+            weight=weight,
+            selection_rates=selection_rates,
+        )
+        for pair in selection_audit["pairs"]:
+            # CI key uses "focal:reference" in group_value for AIR bootstrap records.
+            points[(column, f"{pair['focal_group']}:{pair['reference_group']}", "adverse_impact_ratio")] = pair[
+                "value"
+            ]
         eligible[column] = included
         suppressed[column] = excluded
         columns.append(
@@ -133,6 +155,7 @@ def _group_blocks(
                 "intersection": intersection,
                 "groups": group_rows,
                 "disparities": disparities,
+                "selection_audit": selection_audit,
             }
         )
     return columns, eligible, suppressed, points

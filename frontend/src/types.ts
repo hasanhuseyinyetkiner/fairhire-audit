@@ -62,11 +62,60 @@ export interface Disparity {
   groups_excluded: string[];
 }
 
+export interface ContingencyTable {
+  rows: string[];
+  columns: string[];
+  matrix: number[][];
+  focal_selected: number;
+  focal_not_selected: number;
+  reference_selected: number;
+  reference_not_selected: number;
+}
+
+export interface FisherExact {
+  odds_ratio: number | null;
+  p_value: number | null;
+  undefined_reason: string | null;
+  message: string | null;
+  method: string;
+  note: string;
+}
+
+export interface AirPair {
+  name: string;
+  label: string;
+  focal_group: string;
+  reference_group: string;
+  value: number | null;
+  undefined_reason: string | null;
+  message: string | null;
+  formula: string;
+  four_fifths_threshold: number;
+  below_four_fifths: boolean;
+  focal_selection_rate: number | null;
+  reference_selection_rate: number | null;
+  focal_n: number;
+  reference_n: number;
+  contingency: ContingencyTable;
+  fisher_exact: FisherExact;
+}
+
+export interface SelectionAudit {
+  column: string;
+  reference_group: string | null;
+  four_fifths_threshold: number;
+  pairs: AirPair[];
+  note: string;
+  cmh_available: boolean;
+  cmh_note: string;
+}
+
 export interface GroupColumn {
   column: string;
   intersection: boolean;
   groups: GroupBlock[];
   disparities: Disparity[];
+  selection_audit?: SelectionAudit;
 }
 
 export interface ReliabilityBin {

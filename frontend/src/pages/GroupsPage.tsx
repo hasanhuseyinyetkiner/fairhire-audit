@@ -35,7 +35,7 @@ export function GroupsPage() {
         <PageIntro
           eyebrow="Group disparities"
           title="Same rows. Different error rates."
-          lede="Fairlearn MetricFrame supplies the group rates that have a denominator. Differences use Fairlearn on groups that clear the sample-size minimum. Suppressed groups are not drawn as zero."
+          lede="Group rates come from explicit counts dual-checked against Fairlearn MetricFrame. AIR / 4/5ths and contingency tables sit beside Fairlearn DP/EO/EqOdds. Suppressed groups are withheld, not drawn as zero."
         />
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -145,6 +145,91 @@ export function GroupsPage() {
                 </tbody>
               </table>
             </Panel>
+            {column.selection_audit ? (
+              <Panel data-testid="selection-audit">
+                <h2 className="text-lg font-semibold">AIR / 4/5ths and contingency tables</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{column.selection_audit.note}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Reference group: {column.selection_audit.reference_group ?? "—"}. Threshold{" "}
+                  {column.selection_audit.four_fifths_threshold.toFixed(2)} is a descriptive flag only.
+                </p>
+                {column.selection_audit.pairs.length === 0 ? (
+                  <p className="mt-3 text-sm text-slate-500">No pairwise AIR rows for this column.</p>
+                ) : (
+                  <ul className="mt-4 space-y-6">
+                    {column.selection_audit.pairs.map((pair) => (
+                      <li
+                        key={`${pair.focal_group}:${pair.reference_group}`}
+                        className="border-t border-slate-100 pt-4 first:border-0 first:pt-0 dark:border-white/10"
+                        data-testid={`air-pair-${pair.focal_group}`}
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h3 className="font-medium">
+                            {pair.focal_group} vs {pair.reference_group}
+                          </h3>
+                          <span
+                            className={`tabular text-2xl font-semibold ${
+                              pair.below_four_fifths ? "text-amber-700 dark:text-amber-300" : ""
+                            }`}
+                          >
+                            {pair.value === null ? "—" : pair.value.toFixed(3)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                          Selection rates {formatRate(pair.focal_selection_rate)} /{" "}
+                          {formatRate(pair.reference_selection_rate)}.{" "}
+                          {pair.below_four_fifths
+                            ? `Below ${pair.four_fifths_threshold.toFixed(2)} (descriptive flag).`
+                            : `At or above ${pair.four_fifths_threshold.toFixed(2)}.`}
+                        </p>
+                        {pair.message ? (
+                          <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">{pair.message}</p>
+                        ) : null}
+                        <IntervalLine
+                          interval={findInterval(
+                            intervals,
+                            "adverse_impact_ratio",
+                            column.column,
+                            `${pair.focal_group}:${pair.reference_group}`,
+                          )}
+                        />
+                        <table className="mt-3 w-full max-w-md text-left text-sm" data-testid="contingency-table">
+                          <caption className="mb-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Contingency (selected × group)
+                          </caption>
+                          <thead>
+                            <tr className="text-xs uppercase tracking-wide text-slate-500">
+                              <th className="py-2">Group</th>
+                              <th>Selected</th>
+                              <th>Not selected</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-t border-slate-100 dark:border-white/10">
+                              <td className="py-2">{pair.focal_group}</td>
+                              <td className="tabular">{pair.contingency.focal_selected}</td>
+                              <td className="tabular">{pair.contingency.focal_not_selected}</td>
+                            </tr>
+                            <tr className="border-t border-slate-100 dark:border-white/10">
+                              <td className="py-2">{pair.reference_group}</td>
+                              <td className="tabular">{pair.contingency.reference_selected}</td>
+                              <td className="tabular">{pair.contingency.reference_not_selected}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Fisher exact (two-sided): odds{" "}
+                          {pair.fisher_exact.odds_ratio === null ? "—" : pair.fisher_exact.odds_ratio.toFixed(3)}, p{" "}
+                          {pair.fisher_exact.p_value === null ? "—" : pair.fisher_exact.p_value.toFixed(4)}.{" "}
+                          {pair.fisher_exact.note}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-4 text-xs text-slate-500">{column.selection_audit.cmh_note}</p>
+              </Panel>
+            ) : null}
             <Panel>
               <h2 className="text-lg font-semibold">Fairlearn differences</h2>
               <ul className="mt-3 space-y-4">

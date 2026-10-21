@@ -11,7 +11,9 @@ from collections.abc import Callable
 import numpy as np
 from scipy.stats import scoreatpercentile
 
+from app.domain.air import adverse_impact_ratio
 from app.domain.definitions import (
+    AIR_METRIC_NAME,
     BOOTSTRAP_CONFIDENCE,
     BOOTSTRAP_METHOD,
     BOOTSTRAP_SAMPLING_UNIT,
@@ -152,6 +154,18 @@ def bootstrap_intervals(
             for name in CI_METRIC_NAMES:
                 group_samples[(column, value, name)] = np.full(iterations, np.nan)
     disparity_samples = {(column, name): np.full(iterations, np.nan) for column in eligible for name in DISPARITY_NAMES}
+    # Bootstrap AIR only for pairs present in point estimates (focal:reference).
+    air_keys = [
+        (column, pair_label, metric_name)
+        for (column, pair_label, metric_name) in points
+        if metric_name == AIR_METRIC_NAME and column is not None and pair_label is not None
+    ]
+    air_samples = {key: np.full(iterations, np.nan) for key in air_keys}
+    # Map column → expected reference from the point-estimate key (first pair's reference).
+    air_reference: dict[str, str] = {}
+    for column, pair_label, _metric_name in air_keys:
+        _focal, reference = pair_label.split(":", 1)
+        air_reference[column] = reference
 
     position = 0
     while position < iterations:
@@ -170,6 +184,7 @@ def bootstrap_intervals(
             sel_rows = []
             tpr_rows = []
             fpr_rows = []
+            rate_by_group: dict[str, np.ndarray] = {}
             for value in eligible_values:
                 mask = grown == value
                 tp, fp, tn, fn = _counts(yt, yp, w * mask)
@@ -179,6 +194,7 @@ def bootstrap_intervals(
                 sel_rows.append(rates["selection_rate"])
                 tpr_rows.append(rates["recall"])
                 fpr_rows.append(rates["fpr"])
+                rate_by_group[value] = rates["selection_rate"]
             if eligible_values:
                 selection_diff = _max_minus_min(np.vstack(sel_rows))
                 tpr_diff = _max_minus_min(np.vstack(tpr_rows))
@@ -193,6 +209,23 @@ def bootstrap_intervals(
                 )
                 disparity_samples[(column, "equal_opportunity_difference")][position : position + size] = tpr_diff
                 disparity_samples[(column, "equalized_odds_difference")][position : position + size] = eod
+            # Use the same reference group as the point estimate so the CI matches the reported AIR.
+            reference = air_reference.get(column)
+            if reference is not None and reference in rate_by_group:
+                ref_rates = rate_by_group[reference]
+                for focal in eligible_values:
+                    if focal == reference:
+                        continue
+                    key = (column, f"{focal}:{reference}", AIR_METRIC_NAME)
+                    if key not in air_samples:
+                        continue
+                    foc_rates = rate_by_group[focal]
+                    for draw in range(size):
+                        foc = float(foc_rates[draw]) if np.isfinite(foc_rates[draw]) else None
+                        ref = float(ref_rates[draw]) if np.isfinite(ref_rates[draw]) else None
+                        air, _reason = adverse_impact_ratio(foc, ref)
+                        if air is not None:
+                            air_samples[key][position + draw] = air
         position += size
         if on_progress is not None:
             on_progress()
@@ -242,6 +275,20 @@ def bootstrap_intervals(
                     seed=seed,
                 )
             )
+    for column, pair_label, metric_name in air_keys:
+        records.append(
+            _record(
+                metric_name=metric_name,
+                group_column=column,
+                group_value=pair_label,
+                point=points.get((column, pair_label, metric_name)),
+                samples=air_samples[(column, pair_label, metric_name)],
+                iterations=iterations,
+                iterations_requested=iterations_requested,
+                capped=capped,
+                seed=seed,
+            )
+        )
     for column, values in suppressed.items():
         for value in values:
             for name in CI_METRIC_NAMES:

@@ -23,6 +23,8 @@ MESSAGES: dict[str, str] = {
     "small_bin": "This bin has fewer than 5 rows. The rate is defined and unstable.",
     "fairlearn_undefined": ("Fairlearn returned a non-finite value. The figure is withheld rather than shown as zero."),
     "comparison_undefined": ("The difference is undefined because one of the two rates is undefined. It is not zero."),
+    "non_integer_weights": ("Fisher exact skipped because sample weights produced non-integer cells."),
+    "invalid_counts": ("Fisher exact skipped because a cell count was negative."),
 }
 
 METRIC_LABELS: dict[str, str] = {
@@ -37,6 +39,7 @@ METRIC_LABELS: dict[str, str] = {
     "demographic_parity_difference": "Demographic parity difference",
     "equal_opportunity_difference": "Equal opportunity difference",
     "equalized_odds_difference": "Equalized odds difference",
+    "adverse_impact_ratio": "Adverse impact ratio (selection-rate ratio)",
 }
 
 FORMULAS: dict[str, str] = {
@@ -62,6 +65,12 @@ FORMULAS: dict[str, str] = {
         "The greater of the true-positive-rate difference and the false-positive-rate "
         "difference, Fairlearn equalized_odds_difference(method='between_groups', "
         "agg='worst_case') on groups at or above the sample-size minimum."
+    ),
+    "adverse_impact_ratio": (
+        "Focal group selection rate divided by reference group selection rate "
+        "(reference = eligible group with the highest selection rate). "
+        "Undefined when the reference rate is zero or either rate is undefined. "
+        "The 0.80 (4/5ths) threshold is a descriptive flag only — not a legal finding."
     ),
 }
 
@@ -149,6 +158,8 @@ DISPARITY_NAMES = (
     "equal_opportunity_difference",
     "equalized_odds_difference",
 )
+
+AIR_METRIC_NAME = "adverse_impact_ratio"
 
 MIN_FINITE_REPLICATES = 50
 
