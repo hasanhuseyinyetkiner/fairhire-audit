@@ -5,6 +5,9 @@ match Fairlearn 0.15 with method='between_groups' and, for equalized odds,
 agg='worst_case'.
 """
 
+# Bump when rate formulas, bootstrap procedure, AIR definition, or suppression rules change.
+METHODOLOGY_VERSION = "0.1.0"
+
 CONFUSION_CONVENTION = (
     "Rows are the actual class and columns are the predicted class, in order "
     "[negative, positive]. Cell (0,0) is TN, (0,1) is FP, (1,0) is FN, and "

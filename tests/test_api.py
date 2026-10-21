@@ -27,6 +27,9 @@ def test_meta_is_not_a_decision_engine(client):
     assert body["demo"] is False
     assert body["banner"] is None
     assert body["fairlearn_version"]
+    assert body["methodology_version"]
+    assert body["cmh_available"] is False
+    assert "null" in body["null_not_zero"].lower()
     ready = client.get("/ready")
     assert ready.status_code == 200
     assert client.get("/health").json()["status"] == "ok"

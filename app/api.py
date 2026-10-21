@@ -50,11 +50,14 @@ def ready() -> dict:
 
 @router.get("/api/meta")
 def meta() -> dict:
+    from app.domain.definitions import BOOTSTRAP_CONFIDENCE, METHODOLOGY_VERSION
+
     settings = get_settings()
     demo = settings.app_env == "demo"
     return {
         "name": "FairHire Audit",
         "version": __version__,
+        "methodology_version": METHODOLOGY_VERSION,
         "app_env": settings.app_env,
         "demo": demo,
         "banner": "Local demo · synthetic data" if demo else None,
@@ -65,6 +68,15 @@ def meta() -> dict:
         "small_group_min_n": settings.small_group_min_n,
         "fairlearn_version": metadata.version("fairlearn"),
         "decision_engine": False,
+        "ci_meaning": BOOTSTRAP_CONFIDENCE,
+        "null_not_zero": (
+            "JSON null rates mean undefined or withheld (empty denominator or small group). "
+            "They are not zeros and must not be plotted as zero."
+        ),
+        "cmh_available": False,
+        "cmh_note": (
+            "Cochran–Mantel–Haenszel is not implemented; there is no multi-stratum design input."
+        ),
     }
 
 

@@ -165,6 +165,7 @@ export interface Provenance {
   content_sha256: string;
   row_count: number;
   code_version: string;
+  methodology_version?: string;
   git_sha: string | null;
   fairlearn_version: string;
   sklearn_version: string;
@@ -236,6 +237,7 @@ export interface DatasetSummary {
 export interface Meta {
   name: string;
   version: string;
+  methodology_version?: string;
   app_env: string;
   demo: boolean;
   banner: string | null;
@@ -244,6 +246,10 @@ export interface Meta {
   bootstrap_cap: number;
   small_group_min_n: number;
   retention_days: number;
+  ci_meaning?: string;
+  null_not_zero?: string;
+  cmh_available?: boolean;
+  cmh_note?: string;
 }
 
 export interface Profile {

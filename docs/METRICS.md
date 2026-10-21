@@ -44,9 +44,9 @@ Second profile `different_accuracy_similar_error_rates`: TPR/FPR matched; EO/EqO
 | Check | Result |
 | --- | --- |
 | `uv run ruff check app tests` | Pass |
-| `uv run pytest -q` | **27 passed, 1 skipped** (includes `tests/test_air.py`) |
+| `uv run pytest -q` | **43 passed, 1 skipped** (Sprint 3–4 local; includes edge + fault injection) |
 
-Covered: Fairlearn MetricFrame goldens, AIR / contingency / Fisher, bootstrap CIs (incl. AIR), score gate, cascade delete, Parquet, HTML/JSON report, bind policy, `/health` during audit.
+Covered: Fairlearn MetricFrame goldens, AIR / contingency / Fisher, bootstrap CIs (incl. AIR), score gate, cascade delete, Parquet, HTML/JSON report, bind policy, `/health` during audit, fault injection, tiny-sample honesty.
 
 ---
 
@@ -54,8 +54,9 @@ Covered: Fairlearn MetricFrame goldens, AIR / contingency / Fisher, bootstrap CI
 
 | Check | Result |
 | --- | --- |
-| `pnpm lint` / `typecheck` / `test` / `build` | Pass (3 Vitest) |
-| `pnpm screenshots` | Light/dark PNGs refreshed under `docs/screenshots/` |
+| `pnpm lint` / `typecheck` / `test` / `build` | Pass (**13** Vitest incl. ThresholdPage RTL); build OK |
+| `pnpm test:e2e` | **3 passed** (workflow + threshold network-fail + a11y smoke) |
+| `pnpm screenshots` | **1 passed**; PNGs refreshed under `docs/screenshots/` (2026-10-21) |
 
 ---
 
@@ -69,7 +70,7 @@ pnpm lint; pnpm typecheck; pnpm test; pnpm build
 pnpm test:e2e
 ```
 
-CI: `.github/workflows/ci.yml` (Postgres pytest, frontend build, `compose-smoke`).
+CI: `.github/workflows/ci.yml` (Postgres pytest, frontend build, Playwright `e2e`, `compose-smoke`).
 
 ---
 

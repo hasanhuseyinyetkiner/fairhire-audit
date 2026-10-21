@@ -1,13 +1,18 @@
 import { Info } from "lucide-react";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 import { formatCount, formatInterval, formatRate } from "../lib/format";
 import type { ConfidenceInterval, Metric } from "../types";
 
-export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Panel({
+  children,
+  className = "",
+  ...rest
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLElement>) {
   return (
     <section
       className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[#121826] ${className}`}
+      {...rest}
     >
       {children}
     </section>
@@ -84,13 +89,31 @@ export function IntervalLine({ interval }: { interval: ConfidenceInterval | unde
     return null;
   }
   if (interval.lower === null || interval.upper === null) {
-    return <p className="text-xs text-amber-800 dark:text-amber-200">{interval.message}</p>;
+    return (
+      <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="ci-withheld">
+        {interval.message ?? "Interval withheld. A missing bound is not a zero."}
+      </p>
+    );
   }
+  const width =
+    interval.lower !== null && interval.upper !== null ? interval.upper - interval.lower : null;
   return (
-    <p className="text-xs text-slate-500">
-      Percentile interval {formatInterval(interval.lower, interval.upper)} · {interval.iterations}{" "}
-      {interval.sampling_unit} resamples · seed {interval.seed}
-    </p>
+    <div className="space-y-1 text-xs text-slate-500" data-testid="ci-line">
+      <p>
+        Percentile CI {formatInterval(interval.lower, interval.upper)}
+        {width !== null ? (
+          <>
+            {" "}
+            · width <span className="tabular">{formatRate(width)}</span> (upper − lower; wider =
+            more resampling uncertainty under this procedure)
+          </>
+        ) : null}
+      </p>
+      <p>
+        {interval.iterations} {interval.sampling_unit} resamples · seed {interval.seed} · method{" "}
+        {interval.method}. Not proof of fairness.
+      </p>
+    </div>
   );
 }
 
@@ -120,6 +143,7 @@ export function ProvenanceCard({
     ["Rows", String(provenance.row_count)],
     ["SHA-256", provenance.content_sha256.slice(0, 16) + "…"],
     ["Code", provenance.code_version],
+    ["Methodology", provenance.methodology_version ?? provenance.code_version],
     ["Fairlearn", provenance.fairlearn_version],
     ["scikit-learn", provenance.sklearn_version],
     ["Seed", String(provenance.seed)],

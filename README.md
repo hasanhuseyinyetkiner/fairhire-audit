@@ -1,4 +1,8 @@
-﻿<a id="readme-top"></a>
+<a id="readme-top"></a>
+
+<p align="center">
+  <img src="docs/assets/logo.png" alt="FairHire Audit logo — Fairer hiring. Stronger teams." width="560">
+</p>
 
 # FairHire Audit
 
@@ -18,6 +22,15 @@ It is an audit tool, not a hiring decision engine. It does not claim bias-free s
 
 ---
 
+## For HR and talent leaders
+
+| Question | What this tool gives you |
+| --- | --- |
+| **Do selection or error rates differ by group?** | Group rates, adverse impact ratio and contingency tables sit side by side. |
+| **How certain is that difference?** | Seeded bootstrap intervals, Fisher exact tests, and undefined values where a group is too small. |
+| **What happens at another threshold?** | Threshold Lab recomputes live. It explores trade-offs, it does not approve anyone. |
+| **What it is not** | Not a decision engine, not a bias-free claim, not legal certification. The 4/5ths ratio is descriptive. |
+
 ## Why it exists
 
 Overall accuracy can look fine while group false-positive and false-negative rates diverge. Reviewers need transparent counts, defined rates (undefined when denominators are empty), and uncertainty — without a black-box “fairness score.”
@@ -36,9 +49,12 @@ Overall accuracy can look fine while group false-positive and false-negative rat
 | AIR (selection-rate ratio) / 4/5ths flag + 2×2 contingency + Fisher exact | Shipped |
 | Small-*n* suppression + seeded bootstrap CIs (including AIR) | Shipped |
 | Threshold Lab (live slider) + HTML/JSON report | Shipped |
+| Methodology version + null≠0 / CI-width copy in meta + Threshold Lab | Shipped |
+| Playwright E2E (import → groups → threshold network-fail → report) + CI `e2e` job | Shipped |
 | Intersection toggle (cell cap 200) | Shipped |
 | Cascade delete + retention purge | Shipped |
 | Side-by-side two-model comparison UI | Planned (domain deltas exist) |
+| Docker Compose local smoke | **BLOCKED** on hosts without Docker (CI job still present) |
 
 ---
 
@@ -97,7 +113,16 @@ Copy [`.env.example`](.env.example) only for overrides. Defaults: loopback bind,
 6. **Threshold lab** — move the slider; metrics and AIR update live.
 7. **Audit report** — download HTML/JSON (includes “cannot conclude”).
 
-Playwright: `frontend/e2e/workflow.spec.ts`.
+Playwright: `frontend/e2e/workflow.spec.ts` (includes Threshold Lab + network-fail + a11y smoke).
+
+---
+
+## Current status
+
+- Threshold Lab stale/error UX covered by unit + Playwright network abort path.
+- Explainability: `GET /api/meta` exposes `methodology_version`, `ci_meaning`, `null_not_zero`, `cmh_available: false`.
+- Measured `compute_analysis` baseline: [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md).
+- Local Docker Compose: **BLOCKED** (Docker not installed on this workstation).
 
 ---
 
@@ -106,10 +131,11 @@ Playwright: `frontend/e2e/workflow.spec.ts`.
 - **Undefined ≠ zero.** Empty denominators and small groups return `null` + reason; JSON never emits NaN for AIR.
 - **Fairlearn dual-check.** Count-based selection / TPR / FPR / FNR must match `MetricFrame` on eligible groups.
 - **AIR / 4/5ths.** Focal selection rate ÷ reference (highest eligible selection rate). The 0.80 flag is descriptive only.
-- **Bootstrap.** Sampling unit = row; percentile 2.5 / 97.5; default *B* = 1000, seed `20261020`.
+- **Bootstrap.** Sampling unit = row; percentile 2.5 / 97.5; default *B* = 1000, seed `20261020`. CI width = upper − lower under that procedure.
 - **Score gate.** Threshold Lab opens only after `probability` (values in \[0, 1\]) or `ranking_score`.
+- **CMH.** Not implemented.
 
-Full formulas: [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md). Verified commands: [`docs/METRICS.md`](docs/METRICS.md).
+Full formulas: [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md). Verified commands: [`docs/METRICS.md`](docs/METRICS.md). Provenance: [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ---
 
@@ -147,6 +173,8 @@ See [`docs/METRICS.md`](docs/METRICS.md) for the latest verified results.
 - Loopback by default; **no auth in MVP**.
 - Fairness metrics may conflict; observed differences are measurements, not causal or legal conclusions.
 - Never claims: bias-free, compliant, certified, or fit for automated employment decisions.
+- Threshold Lab network failures surface an alert; stale responses must not overwrite newer results.
+- Local Compose smoke requires Docker — **not available on this host**.
 
 Details: [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
@@ -156,8 +184,13 @@ Details: [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/LIMITATIONS.md`](docs/LI
 
 | Doc | Contents |
 | --- | --- |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Runtime topology and invariants |
 | [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) | Methodology: formulas, bootstrap, AIR, suppression |
+| [`docs/EVALUATION.md`](docs/EVALUATION.md) | Versioned methodology provenance |
+| [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md) | Measured recomputation timings |
 | [`docs/METRICS.md`](docs/METRICS.md) | Verified commands and fixture numbers |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Loopback / synthetic-data boundaries |
+| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Statistical and product limits |
 | [`frontend/README.md`](frontend/README.md) | Web scripts and routes |
 
 License: [MIT](LICENSE).

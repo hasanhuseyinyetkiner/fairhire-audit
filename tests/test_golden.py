@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from app.domain.air import adverse_impact_ratio
 from app.domain.compute import compute_analysis
 from app.domain.definitions import CONFUSION_CONVENTION
 from app.domain.fairness import disparity_values, metric_frame_rates
@@ -69,6 +70,10 @@ def test_hand_counted_two_group_rates_and_fairlearn():
     assert overall["fpr"]["value"] == pytest.approx(10 / 100)
     assert overall["fnr"]["value"] == pytest.approx(30 / 100)
     assert overall["balanced_accuracy"]["value"] == pytest.approx((0.70 + 0.90) / 2)
+    # Independent: selection rate = (TP + FP) / N = 80 / 200
+    assert overall["selection_rate"]["value"] == pytest.approx(80 / 200)
+    assert overall["selection_rate"]["numerator"] == pytest.approx(80)
+    assert overall["selection_rate"]["denominator"] == pytest.approx(200)
 
     mask_a = groups == "group_a"
     group_a = _by_name(metrics_from_counts(counts_from_arrays(y_true[mask_a], y_pred[mask_a])))
@@ -76,6 +81,7 @@ def test_hand_counted_two_group_rates_and_fairlearn():
     assert group_a["fpr"]["value"] == pytest.approx(0.20)
     assert group_a["fnr"]["value"] == pytest.approx(0.20)
     assert group_a["recall"]["value"] == pytest.approx(0.80)
+    assert group_a["selection_rate"]["value"] == pytest.approx(0.50)  # (40 TP + 10 FP) / 100
 
     mask_b = groups == "group_b"
     group_b = _by_name(metrics_from_counts(counts_from_arrays(y_true[mask_b], y_pred[mask_b])))
@@ -85,6 +91,11 @@ def test_hand_counted_two_group_rates_and_fairlearn():
     assert group_b["fnr"]["value"] == pytest.approx(0.40)
     assert group_b["precision"]["value"] == pytest.approx(1.0)
     assert group_b["recall"]["value"] == pytest.approx(0.60)
+    assert group_b["selection_rate"]["value"] == pytest.approx(0.30)  # 30 TP / 100
+    # Independent AIR: focal B / reference A = 0.30 / 0.50 = 0.60 (descriptive 4/5ths only)
+    air, air_reason = adverse_impact_ratio(0.30, 0.50)
+    assert air_reason is None
+    assert air == pytest.approx(0.60)
 
     frame = metric_frame_rates(y_true, y_pred, groups, weight)
     assert frame["group_a"]["recall"] == pytest.approx(0.80)

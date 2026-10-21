@@ -1,6 +1,6 @@
 # Model card — FairHire Audit
 
-Methodology for the audit tool (version `0.1.0`). Verification commands: [`METRICS.md`](METRICS.md). Sources of truth: `app/domain/definitions.py`, `rates.py`, `fairness.py`, `air.py`, `bootstrap.py`, `compute.py`, `synthetic.py`.
+Methodology for the audit tool (`METHODOLOGY_VERSION` / code `0.1.0`). Verification: [`METRICS.md`](METRICS.md). Provenance notes: [`EVALUATION.md`](EVALUATION.md). Sources of truth: `app/domain/definitions.py`, `rates.py`, `fairness.py`, `air.py`, `bootstrap.py`, `compute.py`, `synthetic.py`.
 
 ---
 
@@ -38,7 +38,7 @@ Methodology for the audit tool (version `0.1.0`). Verification commands: [`METRI
 | `score` + `ranking_score` | Opens Threshold Lab; skips Brier |
 | Undeclared score | Threshold Lab locked |
 
-`GET /api/meta` → `"decision_engine": false`.
+`GET /api/meta` → `"decision_engine": false`, plus `methodology_version`, `ci_meaning`, `null_not_zero`, and `cmh_available: false`.
 
 ---
 

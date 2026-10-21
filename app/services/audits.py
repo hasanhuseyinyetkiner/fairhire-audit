@@ -17,7 +17,12 @@ from app import __version__
 from app.db import session_scope
 from app.domain.bootstrap import resolve_iterations
 from app.domain.compute import apply_threshold, compute_analysis
-from app.domain.definitions import BOOTSTRAP_METHOD, BOOTSTRAP_SAMPLING_UNIT, CANNOT_CONCLUDE
+from app.domain.definitions import (
+    BOOTSTRAP_METHOD,
+    BOOTSTRAP_SAMPLING_UNIT,
+    CANNOT_CONCLUDE,
+    METHODOLOGY_VERSION,
+)
 from app.domain.fairness import FairlearnMismatch
 from app.domain.prepare import Prepared, prepare_frame
 from app.domain.report_html import render_report_html
@@ -179,6 +184,7 @@ def _assemble(meta: dict, analysis: dict, finished: datetime) -> dict:
             "content_sha256": meta["content_sha256"],
             "row_count": meta["row_count"],
             "code_version": meta["code_version"],
+            "methodology_version": METHODOLOGY_VERSION,
             "git_sha": meta["git_sha"],
             "fairlearn_version": meta["fairlearn_version"],
             "sklearn_version": meta["sklearn_version"],
