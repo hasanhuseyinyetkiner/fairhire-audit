@@ -24,7 +24,7 @@ React + Vite + TypeScript UI for the local FairHire Audit workstation. The web a
 
 Import → Map → Model quality → Group disparities → Threshold Lab → Audit report.
 
-Threshold Lab stays locked until a score column is mapped and declared as `probability` or `ranking_score` (FHA-1).
+Threshold Lab stays locked until a score column is mapped and declared as `probability` or `ranking_score`. When open, the slider updates metrics (and AIR) live.
 
 ## Notes
 

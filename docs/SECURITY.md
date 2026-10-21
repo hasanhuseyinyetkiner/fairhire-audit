@@ -21,7 +21,7 @@ Compose maps ports as `127.0.0.1:8104`, `127.0.0.1:5104`, `127.0.0.1:5404` even 
 - Uploads are size-capped (`FAIRHIRE_MAX_UPLOAD_BYTES`, default 20 MiB) and row-capped (`max_rows` 50_000).
 - Allowed tabular formats: CSV and Parquet (Parquet via pinned `pyarrow`).
 - Stored files use application-managed paths under `FAIRHIRE_UPLOAD_DIR` / `FAIRHIRE_REPORT_DIR` — not user-supplied paths.
-- **Cascade delete:** `DELETE /api/datasets/{id}` removes the dataset row, derived audit runs, metrics, intervals, threshold scenarios, reports, and on-disk upload/report files (`app/services/datasets.py::delete_dataset`). Covered by API tests (FHA-2).
+- **Cascade delete:** `DELETE /api/datasets/{id}` removes the dataset row, derived audit runs, metrics, intervals, threshold scenarios, reports, and on-disk upload/report files (`app/services/datasets.py::delete_dataset`). Covered by API tests.
 - **Retention purge:** `FAIRHIRE_DATA_RETENTION_DAYS` (default **30**) is mirrored into `AuditSetting.data_retention_days`. Operator command:
 
   ```powershell

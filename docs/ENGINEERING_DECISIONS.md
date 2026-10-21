@@ -109,3 +109,17 @@ The UI and report state: the interval is **resampling uncertainty under this pro
 **Trade-offs.** Narrower product surface. Clearer honesty in README and reports.
 
 **Validation.** `test_meta_is_not_a_decision_engine`; HTML report includes the full `CANNOT_CONCLUDE` list and contains no “bias-free” certificate language.
+
+---
+
+## FHA-D8 — AIR / 4/5ths as descriptive measurement; CMH deferred
+
+**Context.** Selection-rate ratios (adverse impact ratio) and 2×2 contingency tables are standard audit artifacts. Cochran–Mantel–Haenszel requires a stratified design the MVP does not accept.
+
+**Options.** (a) Ship AIR + contingency + Fisher exact with explicit zero handling and bootstrap CIs; document CMH as a gap. (b) Claim CMH without strata. (c) Omit AIR entirely.
+
+**Decision.** Option (a). `app/domain/air.py`: reference = highest eligible selection rate; AIR = focal / reference; 0.80 flag is descriptive only; Fisher exact on integer cells; never emit NaN. CMH documented in [`LIMITATIONS.md`](LIMITATIONS.md).
+
+**Trade-offs.** Reviewers see AIR beside Fairlearn DP without a legal overlay. Multi-stratum CMH remains future work.
+
+**Validation.** `tests/test_air.py` (zero focal → 0.0; zero reference → undefined; synthetic AIR ≈ 0.60 with CI).

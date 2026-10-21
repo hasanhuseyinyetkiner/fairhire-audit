@@ -1,6 +1,6 @@
 # Architecture
 
-FairHire Audit is a local FastAPI + React application that turns an evaluation table into overall quality metrics, Fairlearn group disparities, seeded bootstrap intervals, optional threshold simulations, and a downloadable HTML/JSON report.
+FairHire Audit is a local FastAPI + React application that turns an evaluation table into overall quality metrics, Fairlearn group disparities, AIR / 4/5ths with contingency tables, seeded bootstrap intervals, optional threshold simulations, and a downloadable HTML/JSON report.
 
 ## Runtime topology
 
@@ -9,7 +9,7 @@ flowchart LR
   UI["React + Vite<br/>:5104"] -->|JSON| API["FastAPI + Uvicorn<br/>:8104"]
   API --> DB[("SQLite demo<br/>or PostgreSQL")]
   API --> FS["Uploads + reports<br/>on disk"]
-  API --> DOM["Domain package<br/>prepare · rates · fairness<br/>bootstrap · compute"]
+  API -->   DOM["Domain package<br/>prepare · rates · fairness · air<br/>bootstrap · compute"]
   DOM --> FL["Fairlearn 0.15<br/>MetricFrame + disparities"]
   DOM --> NP["NumPy / SciPy / sklearn"]
 ```
@@ -40,7 +40,7 @@ sequenceDiagram
   Op->>API: Column mapping (+ score semantics)
   Op->>API: POST /api/audits
   API->>Dom: prepare → compute (threadpool)
-  Dom->>Dom: counts, Fairlearn, bootstrap
+  Dom->>Dom: counts, Fairlearn, AIR, bootstrap
   API->>DB: Persist metrics, CIs, report
   Op->>API: GET report.html / report.json
 ```
@@ -63,4 +63,4 @@ Cascade delete removes derived rows and files when a dataset is deleted.
 - `/api/meta` advertises `"decision_engine": false`.
 - Non-loopback binds refuse to start unless explicitly opted in.
 
-Deeper statistical rationale: [`ENGINEERING_DECISIONS.md`](ENGINEERING_DECISIONS.md). Methodology card: [`MODEL_CARD.md`](MODEL_CARD.md). Measured verification: [`METRICS.md`](METRICS.md). Security scope: [`SECURITY.md`](SECURITY.md). Release gates: [`RELEASE_READINESS.md`](RELEASE_READINESS.md).
+Deeper statistical rationale: [`ENGINEERING_DECISIONS.md`](ENGINEERING_DECISIONS.md). Methodology: [`MODEL_CARD.md`](MODEL_CARD.md). Verification: [`METRICS.md`](METRICS.md). Gaps: [`LIMITATIONS.md`](LIMITATIONS.md). Security: [`SECURITY.md`](SECURITY.md).
