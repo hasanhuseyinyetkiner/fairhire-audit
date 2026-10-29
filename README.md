@@ -1,72 +1,41 @@
-<a id="readme-top"></a>
-
-<p align="center"><img src="docs/assets/logo.png" alt="FairHire Audit" width="250"></p>
-
 # FairHire Audit
 
-**See the differences behind an overall score.**
+FairHire Audit is a local workbench for inspecting group-level outcomes in a binary model evaluation. It starts with counts rather than a single fairness score: selection rates, false-positive and false-negative rates, uncertainty, and threshold scenarios can tell different stories about the same predictions. It does not make hiring decisions.
 
-A local workstation for examining hiring-model evaluation tables: group rates, adverse impact ratios, uncertainty, and threshold scenarios in one auditable workflow.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/group-disparities-dark.png">
+  <img src="docs/screenshots/group-disparities-light.png" alt="Group disparity results for a synthetic model evaluation" width="100%">
+</picture>
 
-[![CI](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-2563eb)](LICENSE)
+The included synthetic example makes the problem concrete: two groups each have 80% accuracy, yet their false-negative rates are 20% and 40%. A four-person group is withheld under the default minimum of 30, not reported as zero. The fixture and its counts are documented in [evaluation evidence](docs/METRICS.md).
 
-[Highlights](#highlights) · [Architecture](#architecture) · [Method](#method-and-evidence) · [Quick start](#quick-start) · [Testing](#testing) · [Limitations](#security-and-limitations) · [Docs](#documentation)
+## What was tested on public data
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/group-disparities-dark.png">
-    <img src="docs/screenshots/group-disparities-light.png" alt="Group disparities view showing two synthetic groups with equal accuracy but different error rates, and a small group whose rates are withheld" width="100%">
-  </picture>
-</p>
+A reproducible [UCI Adult census experiment](docs/ADULT_BENCHMARK.md) trains a small income classifier on the published training file and audits the published test file. In the recorded run, predicted-positive rates were 8.01% for the 5,421 records labelled female and 15.08% for the 10,860 labelled male; false-negative rates were 73.05% and 66.37%, respectively. The script checks these and false-positive rates against independently calculated confusion counts. The two files include 23 test rows with values identical to training rows, so they are not strictly separated by record values. This is historical income data, **not hiring data**; these observations cannot establish fairness, causation, or legal compliance in hiring. Dataset attribution, CC BY 4.0 license, source hashes, method, and limitations are in the experiment documentation.
 
-*A synthetic example: equal group accuracy can conceal different false-positive and false-negative rates. The small group is withheld, not shown as zero.*
-
-[Watch the real synthetic audit → group disparities → report workflow (GIF)](docs/assets/demo.gif). The screenshot above is a static alternative; regenerate the animation with `node scripts/record-demo.mjs` after installing the project dependencies, Playwright Chromium and FFmpeg. The isolated synthetic data and recording are retained in a temporary folder.
-
-## Highlights
-
-- **Start with observable counts.** Import CSV or Parquet, map evaluation columns, and inspect confusion counts, group rates, and Fairlearn disparities.
-- **Examine selection differences.** Adverse impact ratios, 2×2 contingency tables, and Fisher exact tests provide context; the four-fifths flag is descriptive.
-- **Keep uncertainty visible.** Seeded row-bootstrap intervals accompany audit metrics; small groups and undefined denominators are withheld with reasons.
-- **Explore thresholds responsibly.** A declared probability or ranking score unlocks the Threshold Lab. Scenario results are point estimates, not deployed decisions or live confidence intervals.
-- **Carry the context forward.** Export HTML or JSON reports with methodology and limits. See the captured [model quality](docs/screenshots/model-quality-light.png) and [audit report](docs/screenshots/audit-report-light.png) views; dark variants are in [`docs/screenshots/`](docs/screenshots/).
-
-## Architecture
-
-```mermaid
-flowchart LR
-  DATA[CSV / Parquet or synthetic data] --> UI[React audit workbench]
-  UI --> API[FastAPI]
-  API --> MAP[Column mapping and score gate]
-  MAP --> CALC[Rates, AIR and bootstrap]
-  CALC --> FL[Fairlearn MetricFrame check]
-  API --> DB[(SQLite / PostgreSQL)]
-  CALC --> REPORT[Audit and HTML / JSON report]
-  REPORT --> UI
-  UI -->|score scenario| API
+```powershell
+uv sync
+uv run python -m scripts.adult_benchmark  # downloads public data into memory
 ```
 
-React, Vite, and TypeScript provide the interface; FastAPI and SQLAlchemy handle the API and persistence. SQLite is the local default; PostgreSQL is used in CI and Compose. The domain uses Fairlearn, NumPy, SciPy, and scikit-learn. See [architecture](docs/ARCHITECTURE.md) for the layers and invariants.
+## How the audit works
 
-## Method and evidence
+Import a CSV or Parquet evaluation table, map actual and predicted outcomes and group columns, and inspect the resulting confusion counts and rates. The API checks eligible group rates against Fairlearn `MetricFrame`. The adverse impact ratio compares each group's selection rate with the highest eligible rate; undefined denominators and small groups are withheld with reasons. The four-fifths flag is descriptive, not a legal conclusion.
 
-The audit computes group confusion counts and checks eligible group rates against Fairlearn `MetricFrame`. AIR divides a focal group's selection rate by the highest eligible group's rate. A zero denominator or a group below the minimum is reported as `null` with a reason; it is not silently converted to zero. The default minimum group size is 30.
+Seeded percentile intervals resample rows and assume exchangeable observations; clustering or sampling design can make them misleading. The Threshold Lab requires a declared probability or ranking score and produces point estimates for scenarios, not deployed decisions or new confidence intervals. [Model card](docs/MODEL_CARD.md) explains formulas, weights and assumptions; [evaluation provenance](docs/EVALUATION.md) explains versioning and scope.
 
-Bootstrap intervals use row resampling and percentile bounds. They assume exchangeable rows; clustered observations can make intervals too narrow. The Threshold Lab recomputes point estimates only. Formulas, weighting, reference selection, and statistical assumptions are in the [model card](docs/MODEL_CARD.md); versioning and scenario scope are in [evaluation provenance](docs/EVALUATION.md).
+React, Vite and TypeScript provide the interface; FastAPI, SQLAlchemy and SQLite provide the local API and storage. The domain uses Fairlearn, NumPy, SciPy and scikit-learn. PostgreSQL is supported for CI and Compose. See [architecture](docs/ARCHITECTURE.md) for details.
 
-The documented **204-row synthetic fixture** has overall TN / FP / FN / TP of **91 / 11 / 31 / 71**. Groups A and B each have 0.80 accuracy, while their false-negative rates are 0.20 and 0.40; group C has four rows and is suppressed. Group B's selection rate relative to A is approximately **0.60**. These are checks on a synthetic fixture, not evidence of fairness in a real hiring model. See [verified fixture results](docs/METRICS.md) and the machine-specific [performance baseline](docs/PERFORMANCE_BASELINE.md).
+## Run locally
 
-## Quick start
-
-Prerequisites: Python 3.12 with `uv`, Node 24, and `pnpm`. From the repository root, start the API:
+Prerequisites: Python 3.12, `uv`, Node 24 and `pnpm`. In one terminal:
 
 ```powershell
 uv sync
 uv run python -m app
 ```
 
-In a second terminal, from the repository root:
+In another:
 
 ```powershell
 cd frontend
@@ -74,20 +43,13 @@ pnpm install
 pnpm dev
 ```
 
-Open [the web app](http://127.0.0.1:5104) or [API documentation](http://127.0.0.1:8104/docs). The default API binds to loopback and uses SQLite at `./data/fairhire.db`; [`.env.example`](.env.example) documents overrides. Health and readiness are available at `/health` and `/ready` on port 8104.
+Open [the web app](http://127.0.0.1:5104) or [API documentation](http://127.0.0.1:8104/docs). The API defaults to loopback and SQLite at `./data/fairhire.db`; [configuration](.env.example) lists overrides. To reproduce the synthetic example, choose **Import → Similar accuracy, different error rates**, map the columns, declare the score as `probability`, and run the audit. A [recorded workflow](docs/assets/demo.gif) shows the interface.
 
-To explore the fixture, choose **Import → Similar accuracy, different error rates**, map the columns, and declare the score as `probability`. Run the audit, compare **Model quality** and **Group disparities**, then move the **Threshold Lab** slider and export the report.
-
-## Testing
-
-From the repository root, in separate backend and frontend terminals:
+## Verification
 
 ```powershell
-# Backend
-uv run ruff check app tests
+uv run ruff check app tests scripts/adult_benchmark.py
 uv run pytest -q
-
-# Frontend
 cd frontend
 pnpm lint
 pnpm typecheck
@@ -97,16 +59,8 @@ pnpm exec playwright install chromium  # once
 pnpm test:e2e
 ```
 
-The [CI workflow](.github/workflows/ci.yml) includes PostgreSQL tests, Playwright and a Compose smoke job. [Recorded test results and fixture values](docs/METRICS.md) describe an earlier native run; `pnpm screenshots` in `frontend` regenerates the product captures. Compose requires Docker; the documented local smoke was blocked on a workstation without it.
+The [CI workflow](.github/workflows/ci.yml) includes PostgreSQL, Playwright and Compose jobs. PostgreSQL tests require `TEST_DATABASE_URL`.
 
-## Security and limitations
+## Boundaries
 
-This is a **local, single-operator MVP** with no authentication. It binds to loopback by default; do not load real protected-attribute HR extracts by default or publish them. Threshold scenarios do not approve or reject candidates. Observed disparities do not establish causation, and neither confidence intervals nor a four-fifths flag establish legal compliance or a bias-free model. CMH and a side-by-side two-model comparison UI are not implemented. See [security](docs/SECURITY.md) and [limitations](docs/LIMITATIONS.md).
-
-## Documentation
-
-- [Architecture and API](docs/ARCHITECTURE.md) · [Model card and formulas](docs/MODEL_CARD.md) · [Frontend](frontend/README.md)
-- [Evaluation provenance](docs/EVALUATION.md) · [Fixture and test evidence](docs/METRICS.md) · [Performance baseline](docs/PERFORMANCE_BASELINE.md)
-- [Security](docs/SECURITY.md) · [Limitations](docs/LIMITATIONS.md) · [Configuration](.env.example) · [MIT license](LICENSE)
-
-<p align="right"><a href="#readme-top">Back to top ↑</a></p>
+This is a local, single-operator MVP with no authentication. Do not load sensitive HR extracts without assessing the environment and privacy obligations. Small-group suppression does not eliminate privacy risk. Observed disparities depend on labels, sampling, group definitions and thresholds; they do not establish causes or legal compliance. CMH and a side-by-side two-model comparison UI are not implemented. See [security](docs/SECURITY.md), [limitations](docs/LIMITATIONS.md), [changelog](CHANGELOG.md), and the [MIT license](LICENSE).
