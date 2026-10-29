@@ -1,198 +1,112 @@
 <a id="readme-top"></a>
 
-<p align="center">
-  <img src="docs/assets/logo.png" alt="FairHire Audit logo — Fairer hiring. Stronger teams." width="560">
-</p>
+<p align="center"><img src="docs/assets/logo.png" alt="FairHire Audit" width="250"></p>
 
 # FairHire Audit
 
-Local workstation for auditing hiring-model **evaluation tables**: confusion counts, Fairlearn group disparities, adverse impact ratio (AIR / 4/5ths) with contingency tables, seeded bootstrap intervals, and a score-gated Threshold Lab. Accent `#2563EB`. Ports **8104** (API) / **5104** (web).
+**See the differences behind an overall score.**
 
-It is an audit tool, not a hiring decision engine. It does not claim bias-free status or legal certification.
+A local workstation for examining hiring-model evaluation tables: group rates, adverse impact ratios, uncertainty, and threshold scenarios in one auditable workflow.
 
 [![CI](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/hasanhuseyinyetkiner/fairhire-audit/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2563eb)](LICENSE)
+
+[Highlights](#highlights) · [Architecture](#architecture) · [Method](#method-and-evidence) · [Quick start](#quick-start) · [Testing](#testing) · [Limitations](#security-and-limitations) · [Docs](#documentation)
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/group-disparities-dark.png">
-    <img alt="Group disparities with AIR contingency and Fairlearn differences" src="docs/screenshots/group-disparities-light.png" width="100%">
+    <img src="docs/screenshots/group-disparities-light.png" alt="Group disparities view showing two synthetic groups with equal accuracy but different error rates, and a small group whose rates are withheld" width="100%">
   </picture>
 </p>
 
----
+*A synthetic example: equal group accuracy can conceal different false-positive and false-negative rates. The small group is withheld, not shown as zero.*
 
-## For HR and talent leaders
+[Watch the real synthetic audit → group disparities → report workflow (GIF)](docs/assets/demo.gif). The screenshot above is a static alternative; regenerate the animation with `node scripts/record-demo.mjs` after installing the project dependencies, Playwright Chromium and FFmpeg. The isolated synthetic data and recording are retained in a temporary folder.
 
-| Question | What this tool gives you |
-| --- | --- |
-| **Do selection or error rates differ by group?** | Group rates, adverse impact ratio and contingency tables sit side by side. |
-| **How certain is that difference?** | Seeded bootstrap intervals, Fisher exact tests, and undefined values where a group is too small. |
-| **What happens at another threshold?** | Threshold Lab recomputes live. It explores trade-offs, it does not approve anyone. |
-| **What it is not** | Not a decision engine, not a bias-free claim, not legal certification. The 4/5ths ratio is descriptive. |
+## Highlights
 
-## Why it exists
-
-Overall accuracy can look fine while group false-positive and false-negative rates diverge. Reviewers need transparent counts, defined rates (undefined when denominators are empty), and uncertainty — without a black-box “fairness score.”
-
-**Users:** ML / people-analytics engineers with authorized or synthetic evaluation extracts.
-
----
-
-## Capabilities
-
-| Capability | Status |
-| --- | --- |
-| CSV / Parquet upload (size-capped; Parquet via `pyarrow`) | Shipped |
-| Column mapping + score semantics gate | Shipped |
-| Overall quality + Fairlearn group rates + DP / EO / EqOdds | Shipped |
-| AIR (selection-rate ratio) / 4/5ths flag + 2×2 contingency + Fisher exact | Shipped |
-| Small-*n* suppression + seeded bootstrap CIs (including AIR) | Shipped |
-| Threshold Lab (live slider) + HTML/JSON report | Shipped |
-| Methodology version + null≠0 / CI-width copy in meta + Threshold Lab | Shipped |
-| Playwright E2E (import → groups → threshold network-fail → report) + CI `e2e` job | Shipped |
-| Intersection toggle (cell cap 200) | Shipped |
-| Cascade delete + retention purge | Shipped |
-| Side-by-side two-model comparison UI | Planned (domain deltas exist) |
-| Docker Compose local smoke | **BLOCKED** on hosts without Docker (CI job still present) |
-
----
+- **Start with observable counts.** Import CSV or Parquet, map evaluation columns, and inspect confusion counts, group rates, and Fairlearn disparities.
+- **Examine selection differences.** Adverse impact ratios, 2×2 contingency tables, and Fisher exact tests provide context; the four-fifths flag is descriptive.
+- **Keep uncertainty visible.** Seeded row-bootstrap intervals accompany audit metrics; small groups and undefined denominators are withheld with reasons.
+- **Explore thresholds responsibly.** A declared probability or ranking score unlocks the Threshold Lab. Scenario results are point estimates, not deployed decisions or live confidence intervals.
+- **Carry the context forward.** Export HTML or JSON reports with methodology and limits. See the captured [model quality](docs/screenshots/model-quality-light.png) and [audit report](docs/screenshots/audit-report-light.png) views; dark variants are in [`docs/screenshots/`](docs/screenshots/).
 
 ## Architecture
 
 ```mermaid
-flowchart TB
-  subgraph client [Web :5104]
-    UI[React · Import · Quality · Groups · Threshold · Report]
-  end
-  subgraph api [API :8104]
-    HTTP[FastAPI]
-    DOM[Domain: rates · fairness · air · bootstrap · compute]
-    HTTP --> DOM
-  end
-  UI -->|JSON| HTTP
-  DOM --> FL[Fairlearn 0.15]
+flowchart LR
+  DATA[CSV / Parquet or synthetic data] --> UI[React audit workbench]
+  UI --> API[FastAPI]
+  API --> MAP[Column mapping and score gate]
+  MAP --> CALC[Rates, AIR and bootstrap]
+  CALC --> FL[Fairlearn MetricFrame check]
+  API --> DB[(SQLite / PostgreSQL)]
+  CALC --> REPORT[Audit and HTML / JSON report]
+  REPORT --> UI
+  UI -->|score scenario| API
 ```
 
-React + Vite + TypeScript frontend; FastAPI + SQLAlchemy backend; Fairlearn / NumPy / SciPy / sklearn. SQLite demo or Postgres (CI). Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+React, Vite, and TypeScript provide the interface; FastAPI and SQLAlchemy handle the API and persistence. SQLite is the local default; PostgreSQL is used in CI and Compose. The domain uses Fairlearn, NumPy, SciPy, and scikit-learn. See [architecture](docs/ARCHITECTURE.md) for the layers and invariants.
 
----
+## Method and evidence
+
+The audit computes group confusion counts and checks eligible group rates against Fairlearn `MetricFrame`. AIR divides a focal group's selection rate by the highest eligible group's rate. A zero denominator or a group below the minimum is reported as `null` with a reason; it is not silently converted to zero. The default minimum group size is 30.
+
+Bootstrap intervals use row resampling and percentile bounds. They assume exchangeable rows; clustered observations can make intervals too narrow. The Threshold Lab recomputes point estimates only. Formulas, weighting, reference selection, and statistical assumptions are in the [model card](docs/MODEL_CARD.md); versioning and scenario scope are in [evaluation provenance](docs/EVALUATION.md).
+
+The documented **204-row synthetic fixture** has overall TN / FP / FN / TP of **91 / 11 / 31 / 71**. Groups A and B each have 0.80 accuracy, while their false-negative rates are 0.20 and 0.40; group C has four rows and is suppressed. Group B's selection rate relative to A is approximately **0.60**. These are checks on a synthetic fixture, not evidence of fairness in a real hiring model. See [verified fixture results](docs/METRICS.md) and the machine-specific [performance baseline](docs/PERFORMANCE_BASELINE.md).
 
 ## Quick start
 
-**Prerequisites:** Python 3.12 (`uv`), Node 24 + pnpm.
+Prerequisites: Python 3.12 with `uv`, Node 24, and `pnpm`. From the repository root, start the API:
 
 ```powershell
-# API → http://127.0.0.1:8104
 uv sync
 uv run python -m app
+```
 
-# Web → http://127.0.0.1:5104  (second terminal)
+In a second terminal, from the repository root:
+
+```powershell
 cd frontend
 pnpm install
 pnpm dev
 ```
 
-| Service | URL |
-| --- | --- |
-| Web | http://127.0.0.1:5104 |
-| OpenAPI | http://127.0.0.1:8104/docs |
-| Health / ready | http://127.0.0.1:8104/health · `/ready` |
+Open [the web app](http://127.0.0.1:5104) or [API documentation](http://127.0.0.1:8104/docs). The default API binds to loopback and uses SQLite at `./data/fairhire.db`; [`.env.example`](.env.example) documents overrides. Health and readiness are available at `/health` and `/ready` on port 8104.
 
-Copy [`.env.example`](.env.example) only for overrides. Defaults: loopback bind, SQLite `./data/fairhire.db`, bootstrap seed `20261020`. Non-loopback bind requires `FAIRHIRE_ALLOW_NETWORK_BIND=true`.
-
----
-
-## 60-second demo
-
-1. Start API + web; open http://127.0.0.1:5104.
-2. **Import** → generate **Similar accuracy, different error rates** (204 synthetic rows).
-3. Map columns (declare `score` as `probability` for Threshold Lab) → **Run audit**.
-4. **Model quality** — CM TN/FP/FN/TP = **91 / 11 / 31 / 71**.
-5. **Group disparities** — matched accuracy, diverging FPR/FNR; AIR for `group_b`/`group_a` ≈ **0.60** with contingency table; `group_c` suppressed.
-6. **Threshold lab** — move the slider; metrics and AIR update live.
-7. **Audit report** — download HTML/JSON (includes “cannot conclude”).
-
-Playwright: `frontend/e2e/workflow.spec.ts` (includes Threshold Lab + network-fail + a11y smoke).
-
----
-
-## Current status
-
-- Threshold Lab stale/error UX covered by unit + Playwright network abort path.
-- Explainability: `GET /api/meta` exposes `methodology_version`, `ci_meaning`, `null_not_zero`, `cmh_available: false`.
-- Measured `compute_analysis` baseline: [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md).
-- Local Docker Compose: **BLOCKED** (Docker not installed on this workstation).
-
----
-
-## Method notes
-
-- **Undefined ≠ zero.** Empty denominators and small groups return `null` + reason; JSON never emits NaN for AIR.
-- **Fairlearn dual-check.** Count-based selection / TPR / FPR / FNR must match `MetricFrame` on eligible groups.
-- **AIR / 4/5ths.** Focal selection rate ÷ reference (highest eligible selection rate). The 0.80 flag is descriptive only.
-- **Bootstrap.** Sampling unit = row; percentile 2.5 / 97.5; default *B* = 1000, seed `20261020`. CI width = upper − lower under that procedure.
-- **Score gate.** Threshold Lab opens only after `probability` (values in \[0, 1\]) or `ranking_score`.
-- **CMH.** Not implemented.
-
-Full formulas: [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md). Verified commands: [`docs/METRICS.md`](docs/METRICS.md). Provenance: [`docs/EVALUATION.md`](docs/EVALUATION.md).
-
----
-
-## API (implemented)
-
-| Method | Path |
-| --- | --- |
-| `GET` | `/health`, `/ready`, `/api/meta` |
-| `GET` / `POST` | `/api/datasets`, `/api/datasets/synthetic` |
-| `POST` | `/api/datasets/{id}/mapping`, `/api/audits` |
-| `GET` | `/api/audits/{id}`, `/groups`, `/report.html`, `/report.json` |
-| `POST` | `/api/audits/{id}/threshold-scenarios` |
-| `DELETE` | `/api/datasets/{id}` (cascade) |
-
-`GET /api/meta` returns `"decision_engine": false`.
-
----
+To explore the fixture, choose **Import → Similar accuracy, different error rates**, map the columns, and declare the score as `probability`. Run the audit, compare **Model quality** and **Group disparities**, then move the **Threshold Lab** slider and export the report.
 
 ## Testing
 
+From the repository root, in separate backend and frontend terminals:
+
 ```powershell
+# Backend
 uv run ruff check app tests
 uv run pytest -q
+
+# Frontend
 cd frontend
-pnpm lint; pnpm typecheck; pnpm test; pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm exec playwright install chromium  # once
+pnpm test:e2e
 ```
 
-See [`docs/METRICS.md`](docs/METRICS.md) for the latest verified results.
-
----
+The [CI workflow](.github/workflows/ci.yml) includes PostgreSQL tests, Playwright and a Compose smoke job. [Recorded test results and fixture values](docs/METRICS.md) describe an earlier native run; `pnpm screenshots` in `frontend` regenerates the product captures. Compose requires Docker; the documented local smoke was blocked on a workstation without it.
 
 ## Security and limitations
 
-- Demo data is **synthetic**. Do not publish real evaluation extracts.
-- Loopback by default; **no auth in MVP**.
-- Fairness metrics may conflict; observed differences are measurements, not causal or legal conclusions.
-- Never claims: bias-free, compliant, certified, or fit for automated employment decisions.
-- Threshold Lab network failures surface an alert; stale responses must not overwrite newer results.
-- Local Compose smoke requires Docker — **not available on this host**.
-
-Details: [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
-
----
+This is a **local, single-operator MVP** with no authentication. It binds to loopback by default; do not load real protected-attribute HR extracts by default or publish them. Threshold scenarios do not approve or reject candidates. Observed disparities do not establish causation, and neither confidence intervals nor a four-fifths flag establish legal compliance or a bias-free model. CMH and a side-by-side two-model comparison UI are not implemented. See [security](docs/SECURITY.md) and [limitations](docs/LIMITATIONS.md).
 
 ## Documentation
 
-| Doc | Contents |
-| --- | --- |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Runtime topology and invariants |
-| [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) | Methodology: formulas, bootstrap, AIR, suppression |
-| [`docs/EVALUATION.md`](docs/EVALUATION.md) | Versioned methodology provenance |
-| [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md) | Measured recomputation timings |
-| [`docs/METRICS.md`](docs/METRICS.md) | Verified commands and fixture numbers |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Loopback / synthetic-data boundaries |
-| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Statistical and product limits |
-| [`frontend/README.md`](frontend/README.md) | Web scripts and routes |
+- [Architecture and API](docs/ARCHITECTURE.md) · [Model card and formulas](docs/MODEL_CARD.md) · [Frontend](frontend/README.md)
+- [Evaluation provenance](docs/EVALUATION.md) · [Fixture and test evidence](docs/METRICS.md) · [Performance baseline](docs/PERFORMANCE_BASELINE.md)
+- [Security](docs/SECURITY.md) · [Limitations](docs/LIMITATIONS.md) · [Configuration](.env.example) · [MIT license](LICENSE)
 
-License: [MIT](LICENSE).
-
-<p align="right"><a href="#readme-top">↑ back to top</a></p>
+<p align="right"><a href="#readme-top">Back to top ↑</a></p>
